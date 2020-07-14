@@ -67,7 +67,7 @@ class SUITCommonInformation:
         self.current_index = 0
         self.indent_size = 4
     def component_id_to_index(self, cid):
-        id = -1
+        id = True
         for i, c in enumerate(self.component_ids):
             if c == cid and i >= 0:
                 id = componentIndex(i)
@@ -98,11 +98,14 @@ class SUITInt:
 class SUITPosInt(SUITInt):
     def from_json(self, v):
         TreeBranch.append(type(self))
-        _v = int(v)
-        # print (_v)
-        if _v < 0:
-            raise Exception('Positive Integers must be >= 0')
-        self.v = _v
+        if type(v) == bool:
+            _v = bool(v)
+            self.v = _v
+        else:
+            _v = int(v)
+            if _v < 0:
+                raise Exception('Positive Integers must be >= 0')
+            self.v = _v
         TreeBranch.pop()
         return self
     def from_suit(self, v):
@@ -575,13 +578,14 @@ class SUITSequence(SUITManifestArray):
                 suitCommonInfo.current_index = dependencyIndex(i.arg.v)
             else:
                 # Option 1: current & command index same class, same number,
-                    # Do nothing 
+                    # Do nothing
                 # Option 2: current & command not equal, command is component
                     # set component index
                 # Option 3: current & command not equal, command is dependency
                     # set dependency index
                 cidx = suitCommonInfo.component_id_to_index(i.cid)
-                if cidx != suitCommonInfo.current_index:
+                if type(cidx) != type(suitCommonInfo.current_index) or
+                   cidx != suitCommonInfo.current_index:
                     op = 'directive-set-component-index'
                     if isinstance(cidx, dependencyIndex):
                         op = 'directive-set-dependency-index'
@@ -700,7 +704,7 @@ class SUITText(SUITManifestDict):
                 self.components[SUITComponentId().from_suit(k)] = SUITComponentText().from_suit(v)
         # Treat everything else as a normal manifestDict
         return super(SUITText, self).from_json(data)
-    
+
     def to_debug(self, indent):
         s = '{'
         newindent = indent + one_indent
@@ -724,7 +728,7 @@ class SUITManifest(SUITManifestDict):
         'version' : ('manifest-version', 1, SUITPosInt),
         'sequence' : ('manifest-sequence-number', 2, SUITPosInt),
         'common' : ('common', 3, SUITBWrapField(SUITCommon)),
-        'refuri' : ('reference-uri', 4, SUITTStr), 
+        'refuri' : ('reference-uri', 4, SUITTStr),
         'deres' : ('dependency-resolution', 7, SUITMakeSeverableField(SUITSequenceComponentReset)),
         'fetch' : ('payload-fetch', 8, SUITMakeSeverableField(SUITSequenceComponentReset)),
         'install' : ('install', 9, SUITMakeSeverableField(SUITSequenceComponentReset)),

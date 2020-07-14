@@ -120,7 +120,7 @@ def make_sequence(cid, choices, seq, params, cmds, pcid_key=None, param_drctv='d
 
         if len(dep_params):
             TECseq.v.append(mkCommand(pcid, param_drctv, dep_params))
-        
+
         for cmd in TECseq_cmds:
             TECseq.v.append(cmd)
 
@@ -190,7 +190,27 @@ def compile_manifest(options, m):
         'class-id' : lambda cid, data: ('class-id', data['class-id']),
         'offset' : lambda cid, data: ('offset', data['offset'])
     }
-    # print('Common')
+    # deduplicate parameters identical for all components
+    # deduplicate conditions identical for all components
+
+    if (len(cid_data) > 1):
+        # Create a flattened list of all requested command sequences
+        sequences = list(itertools.chain(*(choices for choices in
+                                           cid_data.values())))
+        eqcmds, _ = check_eq(CommonCmds, sequences)
+        eqparams, _ = check_eq(CommonParams, sequences)
+
+        cid = SUITComponentId().from_json('')
+        c = OrderedDict()
+        for cmd in eqcmds.keys():
+            c[cmd] = sequences[0][cmd]
+        for id, choices in cid_data.items():
+            for choice in choices:
+                for eqcmd in eqcmds.keys():
+                    choice.pop(eqcmd)
+        cid_data[cid] = [c]
+
+
     CommonSeq = SUITSequence()
     for cid, choices in cid_data.items():
         CommonSeq = make_sequence(cid, choices, CommonSeq, CommonParams,
@@ -386,7 +406,7 @@ def compile_manifest(options, m):
         'components': [id.to_json() for id in ids.keys()],
         'common-sequence': CommonSeq.to_json(),
     })
-    if len(Dependencies.items): 
+    if len(Dependencies.items):
         common.dependencies = Dependencies
 
     # print('manifest')
@@ -395,7 +415,7 @@ def compile_manifest(options, m):
         'manifest-sequence-number' : m['manifest-sequence-number'],
         'common' : common.to_json()
     }
-    
+
     # for k,v in {'deres':DepSeq, 'fetch': FetchSeq, 'install':InstSeq, 'validate':ValidateSeq, 'run':RunSeq, 'load':LoadSeq}.items():
     #     # print('sequence:{}'.format(k))
     #     v.to_json()
@@ -442,7 +462,7 @@ def compile_manifest(options, m):
         suit_text = cbor.dumps(text.to_suit(), canonical=True)
         digest = hashes.Hash(SUITEnvelope.digest_algorithms.get(digest_alg)(), backend=default_backend())
         digest.update(suit_text)
-        
+
         jenvelope['manifest'].update({'text' : {
             'algorithm-id' : digest_alg,
             'digest-bytes' : digest.finalize()
